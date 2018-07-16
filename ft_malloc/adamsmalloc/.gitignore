@@ -1,0 +1,9 @@
+._*
+a.out*
+test*
+!test*.c
+liladam*
+!liladam*.c
+liltest*
+!liltest*.c
+
