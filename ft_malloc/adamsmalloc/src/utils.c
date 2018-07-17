@@ -6,7 +6,7 @@
 /*   By: lprior <lprior@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/03/17 00:14:58 by asyed             #+#    #+#             */
-/*   Updated: 2018/07/15 19:40:23 by lprior           ###   ########.fr       */
+/*   Updated: 2018/07/16 18:01:57 by lprior           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@ void		*init_page(size_t pagesize)
 {
 	void	*tmp;
 
+	printf("\nin init page, pagesize = [%zu]\n", pagesize);
 	if ((tmp = mmap(NULL, pagesize, PROT_ALL, FT_MAP_ANON, -1, 0))
 				== MAP_FAILED)
 		return (NULL);
@@ -35,7 +36,11 @@ int			next_page(t_header **l_page, void **curr_page, size_t pagesize)
 	return (0);
 }
 
-int			align_pagesize(size_t x, int large)
+
+//gets the system_size with getpagesize
+//page is parsed based on large and is either set to x + sizeof(t_header)if true, or ((x + sizeof(t_header)) * MAX_PER_PAGE) if small or tiny
+//after page it it for some reason it returns page + (page % sys_size));
+int		align_pagesize(size_t x, int large)
 {
 	static int	sys_size = 0;//he keeps this static because he only needs to call it once
 	size_t		page;
@@ -44,9 +49,10 @@ int			align_pagesize(size_t x, int large)
 	if (!sys_size)
 		sys_size = getpagesize();
 	if (large)
-		page = x + sizeof(t_header);
+		page = x + sizeof(t_header);//he does sizeof(t_haeder) because later he will be casting a memory block found by mmap to a t_header
 	else
 		page = PAGESIZE(x);
+	printf("\npage = %zu and sys_size = %d\n", page, sys_size);
 	printf("align_pagesize = [%zu]\n", page + (page % sys_size));
 	return (page + (page % sys_size));
 }
