@@ -6,7 +6,7 @@
 /*   By: liamprior <liamprior@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/07/14 16:41:38 by lprior            #+#    #+#             */
-/*   Updated: 2018/07/18 20:05:01 by liamprior        ###   ########.fr       */
+/*   Updated: 2018/07/18 21:03:12 by liamprior        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,6 +53,7 @@ void    *ft_alloc(size_t page_size, size_t req_size, int thread_num)
         {
             meta->start_addr = given_block;
             if (!meta->size)//i need to see if i can fit my meta into the zone
+            {
                 if (void_page + req_size + sizeof(t_meta) <= (*given_block + page_size) && (void_page = meta))
                 {
                     meta->free = false;
@@ -63,14 +64,30 @@ void    *ft_alloc(size_t page_size, size_t req_size, int thread_num)
                         meta->next = NULL;
                     }
                 }
+                else if (meta->next)
+                {
+                    *given_block = meta->next;
+                    meta = (t_meta *)*given_block;
+                    continue ;
+                }
+                create_next_page(&meta, given_block, page_size);//should only hit this if its a large alloc
+                continue ;
+            }
+            else//this below is weird becuase i would have to continue on every elseif
+            {
+                if (meta->size >= req_len)
+                    meta->free = false;
+                else if (meta->next)//continue
+                {
+                    *given_block = meta->next;
+                    meta = (t_meta *)*given_block;
+                }
+                else if ((meta + req_size + sizeof(t_meta)) < (*given_block + page_size))//i may need to cast meta to a void *
+                    meta += req_size + sizeof(t_meta);
+                else
+                    create_next_page(&meta, given_block, page_size);
+            }
         }
-        else if (meta->next)
-        {
-            *given_block = meta->next;
-            meta = (t_meta *)*given_block;
-            continue ;
-        }
-        create_next_page(&meta, given_block, page_size);//should only hit this if its a large alloc
     }
 }
 
