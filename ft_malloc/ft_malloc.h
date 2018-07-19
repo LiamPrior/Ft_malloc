@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ft_malloc.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lprior <lprior@student.42.fr>              +#+  +:+       +#+        */
+/*   By: liamprior <liamprior@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/07/14 16:12:10 by lprior            #+#    #+#             */
-/*   Updated: 2018/07/16 22:03:58 by lprior           ###   ########.fr       */
+/*   Updated: 2018/07/18 18:54:58 by liamprior        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,14 +22,17 @@
 extern void				*g_pages[3];
 extern pthread_mutex_t	g_mutex[3];
 
-typedef struct s_alloc
-{
-    int zone_size;
+// typedef struct s_alloc
+// {
+//     int zone_size;
     
-}               t_alloc;
+    
+// }               t_alloc;
 
 typedef struct s_meta
 {
     struct t_alloc;
-
+    void    *start_addr;
+    bool    free;
+    struct t_meta *next;
 }               t_meta;

@@ -3,48 +3,98 @@
 /*                                                        :::      ::::::::   */
 /*   ft_malloc.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lprior <lprior@student.42.fr>              +#+  +:+       +#+        */
+/*   By: liamprior <liamprior@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/07/14 16:41:38 by lprior            #+#    #+#             */
-/*   Updated: 2018/07/16 22:41:52 by lprior           ###   ########.fr       */
+/*   Updated: 2018/07/18 20:05:01 by liamprior        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft/libft.h"
 #include "ft_malloc.h"
 
-void    *ft_malloc(size_t size)
+
+void			*g_pages[3] = {NULL, NULL, NULL};
+pthread_mutex_t	g_mutex[3] = {
+	PTHREAD_MUTEX_INITIALIZER,
+	PTHREAD_MUTEX_INITIALIZER,
+	PTHREAD_MUTEX_INITIALIZER
+};
+
+void    create_next_page(t_meta **meta, void **given_block, int page_size)
+{
+    void *tmp;
+
+    if ((tmp = mmap(NULL, page_size, PROT_ALL, FT_MAP_ANON, -1, 0)))
+    {
+        (*meta)->next = tmp;
+        (*meta)->check = chksum(*meta);
+        *given_block = tmp;
+        (*meta) = (t_meta *)(*given_block);
+    }
+}
+
+void    *ft_alloc(size_t page_size, size_t req_size, int thread_num)
+{
+    pthread_mutex_t *thread_block;
+    void **given_block;
+    void *void_page;
+    t_meta *meta;
+
+    given_block = &(g_pages[thread_num]);
+	thread_block = &(g_mutex[thread_num]);
+    pthread_mutex_lock(thread_block);//so this singles it down to one thread because if there are two it can fuck up the time schedule its doing things.
+    if ((!*given_block) && given_block = mmap(NULL, page_size, PROT_ALL, MAP_PERMS, -1, 0) == MAP_FAILED);//could be a problem becuz it may need to be 2 ifs
+        return (NULL);
+    meta = (t_meta *)*given_block;
+    while (meta && (void *)meta < (*given_block + page_size))
+    {
+        if (meta->free)
+        {
+            meta->start_addr = given_block;
+            if (!meta->size)//i need to see if i can fit my meta into the zone
+                if (void_page + req_size + sizeof(t_meta) <= (*given_block + page_size) && (void_page = meta))
+                {
+                    meta->free = false;
+                    meta->size = req_size;
+                    if (void_page + req_size + sizeof(t_meta) <= *given_block + page_size - sizeof(t_meta))
+                    {    
+                        ((t_meta *)(void_page) + req_size + sizeof(t_meta))->next = meta->next;//may be able to just set it to NULL
+                        meta->next = NULL;
+                    }
+                }
+        }
+        else if (meta->next)
+        {
+            *given_block = meta->next;
+            meta = (t_meta *)*given_block;
+            continue ;
+        }
+        create_next_page(&meta, given_block, page_size);//should only hit this if its a large alloc
+    }
+}
+
+void    *ft_malloc(size_t req_size)
 {
     static int zone_size = 0;
+    size_t  page;
+    int     thread_num;
     t_alloc *alloc;
     t_meta *meta;
-    size_t  page;
-    pthread_mutex_t *thread_block;
-    int     thread_num;
-    void *mem;
-    void **fetched_seg;
-    void *tmp;
 
     if (!zone_size)
         zone_size = getpagesize();
-    if (!size)
+    if (!req_size)
         return (NULL);
-    else if (size <= TINY && (thread_num = 0))
+    else if (req_size <= TINY && (thread_num = 0))
         (page = (TINY + sizeof(meta)) * 300)
-    else if (size <= SMALL && size > TINY && (thread_num = 1))
+    else if (req_size <= SMALL && size > TINY && (thread_num = 1))
         page = (SMALL + sizeof(meta)) * 300;
     else if ((thread_num = 2))
-        page = size + sizeof(meta);
+        page = req_size + sizeof(meta);
     page += (page % zone_size);
-    // >>>>>>>>>change code below because it has to handle differnt sizes for differnt threads
-    //im going to maybe have to change this because large is differnt
-    fetched_seg = &(g_pages[thread_num]);
-	mutex_lock = &(g_mutex[thread_num]);
-    pthread_mutex_lock(mutex);//so this singles it down to one thread because if there are two it can fuck up the time schedule its doing things.
-    // okay so before i can grab my memory zone i need to lock into a threadŻ.
-
-    if (tmp = mmap(NULL, page, PROT_ALL, MAP_PERMS, -1, 0) == MAP_FAILED);
-        return (NULL);
+     return (thread_num < 2 ? ft_alloc(page, req_size, thread_num)
+            : ft_alloc_large(page, req_size,thread_num));
 }
 
 int main(void)
