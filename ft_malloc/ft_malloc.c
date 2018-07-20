@@ -6,7 +6,7 @@
 /*   By: liamprior <liamprior@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/07/14 16:41:38 by lprior            #+#    #+#             */
-/*   Updated: 2018/07/18 21:03:12 by liamprior        ###   ########.fr       */
+/*   Updated: 2018/07/19 13:53:41 by liamprior        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,17 +21,38 @@ pthread_mutex_t	g_mutex[3] = {
 	PTHREAD_MUTEX_INITIALIZER
 };
 
-void    create_next_page(t_meta **meta, void **given_block, int page_size)
+int ft_used_seg(t_meta **meta, void **given_block, size_t page_size)
+{
+    if ((*meta)->next)
+    {
+        *given_block = (*t_meta)->next;
+        *meta = (t_meta *)(*given_block);
+        return (1);
+    }
+    if (meta + req_size + sizeof(t_meta) >= (*given_block + page_size))
+    {
+        get_next_page(meta, given_block, page_size);
+        return (1);
+    }
+    return (0);
+}
+
+void    ft_create_next_page(t_meta **meta, void **given_block, int page_size)
 {
     void *tmp;
 
     if ((tmp = mmap(NULL, page_size, PROT_ALL, FT_MAP_ANON, -1, 0)))
     {
         (*meta)->next = tmp;
-        (*meta)->check = chksum(*meta);
+        (*meta)->check = chksum(*meta);//i need to write chksum
         *given_block = tmp;
         (*meta) = (t_meta *)(*given_block);
     }
+}
+
+void    *ft_alloc_large()
+{
+
 }
 
 void    *ft_alloc(size_t page_size, size_t req_size, int thread_num)
@@ -39,6 +60,7 @@ void    *ft_alloc(size_t page_size, size_t req_size, int thread_num)
     pthread_mutex_t *thread_block;
     void **given_block;
     void *void_page;
+    void    *mem_seg;
     t_meta *meta;
 
     given_block = &(g_pages[thread_num]);
@@ -75,23 +97,37 @@ void    *ft_alloc(size_t page_size, size_t req_size, int thread_num)
             }
             else//this below is weird becuase i would have to continue on every elseif
             {
-                if (meta->size >= req_len)
+                if (meta->size >= req_size)
                     meta->free = false;
                 else if (meta->next)//continue
                 {
                     *given_block = meta->next;
                     meta = (t_meta *)*given_block;
+                    continue ;
                 }
                 else if ((meta + req_size + sizeof(t_meta)) < (*given_block + page_size))//i may need to cast meta to a void *
+                {
                     meta += req_size + sizeof(t_meta);
-                else
-                    create_next_page(&meta, given_block, page_size);
+                    continue ;
+                }
+                else if (create_next_page(&meta, given_block, page_size))
+                    continue ;
             }
+            mem_seg = (void *)meta;
+            break ;
         }
+        if (used_seg(&meta, given_block, page_size))
+            continue ;
+         meta += req_size + sizeof(t_meta);
     }
+    (t_meta *)mem_seg->thread_num = thread_num;
+    (t_meta *)mem_seg->check = chksum(mem_seg);
+    pthread_mutex_unlock(thread_block);
+    return (mem_seg + sizeof(t_meta)));
 }
 
-void    *ft_malloc(size_t req_size)
+
+void    *malloc(size_t req_size)
 {
     static int zone_size = 0;
     size_t  page;
